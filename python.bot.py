@@ -10,8 +10,8 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # ================= বটের মূল কনফিগারেশন =================
-API_TOKEN = '8999198206:AAGj_k-cdicUdSuZ1fAbb2Fs7T_xXrePR-g'
-BOT_USERNAME = 'Infinityearn11_bot'
+API_TOKEN = '8924739332:AAHRzl2KqTpmMnGwiFjimtsRiVp-ohJabpc'
+BOT_USERNAME = 'Infinity_Earn838bot'
 ADMIN_IDS = [6227950415, 7016100281]
 
 # ১. Mandatory Join Channels

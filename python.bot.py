@@ -21,7 +21,7 @@ from telegram.ext import (
 
 # ================= CONFIG =================
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8835566704:AAFhnTNVNvkJuWbT_oA_kCQ0a9zzlTjzctQ")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8835566704:AAG2QU4dA7-Wz0GwCLNCc5qEhidcrheJStI")
 
 # আপনার Telegram numeric user id দিন
 OWNER_ID = int(os.getenv("OWNER_ID", "8775125184"))

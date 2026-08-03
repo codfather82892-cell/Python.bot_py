@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HGNICE Game - WinGo</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background-color: #f7f8fc;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff4e50, #f9d423);
+            padding: 15px;
+            color: white;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .balance-card {
+            background: white;
+            margin: 15px;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .balance-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff4e50;
+            margin: 5px 0;
+        }
+        .game-section {
+            background: white;
+            margin: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .timer-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-green { background-color: #2ecc71; }
+        .btn-violet { background-color: #9b59b6; }
+        .btn-red { background-color: #e74c3c; }
+        .btn-big { background-color: #f39c12; }
+        .btn-small { background-color: #3498db; }
+        
+        .number-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .num-btn {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 50%;
+            background: white;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">HGNICE GAME - WinGo 30s</div>
+
+    <div class="balance-card">
+        <div>Total Balance</div>
+        <div class="balance-amount" id="user-balance">৳100.00</div>
+    </div>
+
+    <div class="game-section">
+        <div class="timer-box">
+            <span>WinGo 30sec</span>
+            <span id="countdown" style="font-weight: bold; color: #c0392b;">00:30</span>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-green" onclick="placeBet('Green')">Green</button>
+            <button class="btn btn-violet" onclick="placeBet('Violet')">Violet</button>
+            <button class="btn btn-red" onclick="placeBet('Red')">Red</button>
+        </div>
+
+        <div class="number-grid">
+            <button class="num-btn" onclick="placeBet('0')">0</button>
+            <button class="num-btn" onclick="placeBet('1')">1</button>
+            <button class="num-btn" onclick="placeBet('2')">2</button>
+            <button class="num-btn" onclick="placeBet('3')">3</button>
+            <button class="num-btn" onclick="numBet('4')">4</button>
+            <button class="num-btn" onclick="placeBet('5')">5</button>
+            <button class="num-btn" onclick="placeBet('6')">6</button>
+            <button class="num-btn" onclick="placeBet('7')">7</button>
+            <button class="num-btn" onclick="placeBet('8')">8</button>
+            <button class="num-btn" onclick="placeBet('9')">9</button>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-big" onclick="placeBet('Big')">Big</button>
+            <button class="btn btn-small" onclick="placeBet('Small')">Small</button>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let balance = 100.00;
+
+        function placeBet(option) {
+            let betAmount = 10.0; // ডিফল্ট বাজি ১০ টাকা
+            if (balance < betAmount) {
+                alert("Insufficient balance! Please deposit.");
+                return;
+            }
+            
+            balance -= betAmount;
+            document.getElementById('user-balance').innerText = `৳${balance.toFixed(2)}`;
+            
+            // র্যান্ডম ফলাফল নির্ধারণ (WinGo লজিক)
+            let win = Math.random() > 0.5;
+            setTimeout(() => {
+                if (win) {
+                    balance += betAmount * 2;
+                    alert(`🎉 অভিনন্দন! আপনি ${option} এ জিতেছেন!`);
+                } else {
+                    alert(`❌ আপনি ${option} এ হেরে গেছেন!`);
+                }
+                document.getElementById('user-balance').innerText = `৳${balance.toFixed(2)}`;
+            }, 1000);
+        }
+
+        // ৩০ সেকেন্ডের টাইমার কাউন্টডাউন
+        let timeLeft = 30;
+        setInterval(() => {
+            timeLeft--;
+            if (timeLeft < 0) timeLeft = 30;
+            let sec = timeLeft < 10 ? "0" + timeLeft : timeLeft;
+            document.getElementById('countdown').innerText = `00:${sec}`;
+        }, 1000);
+    </script>
+</body>
+</html>

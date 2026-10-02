@@ -13,6 +13,7 @@ This project keeps the existing Telegram bot/admin-panel code and adds a separat
 Set:
 - `BOT_TOKEN` = your BotFather token
 - `DB_DIR` = `/data` when using a Railway Volume
+- `WEBAPP_URL` = your Railway public HTTPS domain (for example `https://your-service.up.railway.app`)
 
 Do not put the real bot token in GitHub.
 

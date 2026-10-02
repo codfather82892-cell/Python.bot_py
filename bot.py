@@ -14,8 +14,8 @@ from decimal import Decimal, InvalidOperation
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import (
-    Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton,
-    InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
+    Message, CallbackQuery, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton,
+    InlineKeyboardMarkup, InlineKeyboardButton, BotCommand, WebAppInfo, BotCommandScopeChat
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -27,17 +27,16 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 # CONFIG
 # =========================
 # TODO: Replace with your valid token from @BotFather
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-if not BOT_TOKEN:
-    raise RuntimeError("BOT_TOKEN environment variable is required.")
+BOT_TOKEN = os.getenv("BOT_TOKEN", ".................").strip()
 ADMIN_ID = 2037461288
 OWNER_ID = ADMIN_ID
+WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
 
 PAYMENT_GATEWAY_URL = "https://ttkpay.up.railway.app"
 BINANCE_DEPOSIT_ADDRESS = "0xade76b7f023c3ded14850293ea26e477edbdd048"
 USDT_RATE_BDT = Decimal("125")
 
-DB_DIR = os.getenv("DB_DIR", ".")
+DB_DIR = os.getenv("DB_DIR", ".").strip() or "."
 os.makedirs(DB_DIR, exist_ok=True)
 DB_NAME = os.path.join(DB_DIR, "nikan.db")
 DB_BACKUP_NAME = os.path.join(DB_DIR, "nikan_backup.db")
@@ -699,20 +698,37 @@ def super_ok(uid):
         return False
 
 def main_keyboard(user_id: int):
-    keyboard_rows = [
-        [KeyboardButton(text="🔐 ফান্ড ডিপোজিট"), KeyboardButton(text="👤 একাউন্ট")],
-        [KeyboardButton(text="💸 Withdraw"), KeyboardButton(text="👥 Referral")],
-        [KeyboardButton(text="📊 Daily Earnings"), KeyboardButton(text="🎁 Bonus Center")],
-        [KeyboardButton(text="💎 Available Plans"), KeyboardButton(text="🧾 Transaction History")],
-        [KeyboardButton(text="🆘 Help & Support")],
-    ]
+    # Preserve the existing full keyboard for Admin/Owner only.
+    # Normal users now get a single Mini App Open button.
     if admin_ok(user_id):
-        keyboard_rows.append([KeyboardButton(text="🔧 Admin Panel")])
+        keyboard_rows = [
+            [KeyboardButton(text="🔐 ফান্ড ডিপোজিট"), KeyboardButton(text="👤 একাউন্ট")],
+            [KeyboardButton(text="💸 Withdraw"), KeyboardButton(text="👥 Referral")],
+            [KeyboardButton(text="📊 Daily Earnings"), KeyboardButton(text="🎁 Bonus Center")],
+            [KeyboardButton(text="💎 Available Plans"), KeyboardButton(text="🧾 Transaction History")],
+            [KeyboardButton(text="🆘 Help & Support")],
+            [KeyboardButton(text="🔧 Admin Panel")]
+        ]
+    else:
+        return open_keyboard()
 
     return ReplyKeyboardMarkup(
         keyboard=keyboard_rows,
         resize_keyboard=True,
         input_field_placeholder="একটি অপশন নির্বাচন করুন"
+    )
+
+def open_keyboard():
+    # Telegram requires an HTTPS URL for a Web App button.
+    if WEBAPP_URL.startswith("https://"):
+        button = KeyboardButton(text="🚀 Open", web_app=WebAppInfo(url=WEBAPP_URL))
+    else:
+        # Safe fallback until WEBAPP_URL is configured on Railway.
+        button = KeyboardButton(text="🚀 Open")
+    return ReplyKeyboardMarkup(
+        keyboard=[[button]],
+        resize_keyboard=True,
+        input_field_placeholder="🚀 Open চাপুন"
     )
 
 def cancel_keyboard():
@@ -749,11 +765,19 @@ async def force_join_prompt(message: Message):
     con.close()
     if not rows:
         rows=[(getset("force_join_link") or "https://t.me/",)]
-    buttons=[[InlineKeyboardButton(text=f"📢 Join Channel {i+1}",url=link)] for i,(link,) in enumerate(rows)]
-    buttons.append([InlineKeyboardButton(text="✅ Check Joined",callback_data="check_force_join")])
+
+    buttons=[]
+    for i,(link,) in enumerate(rows, start=1):
+        buttons.append([InlineKeyboardButton(text=f"📢 Join Channel {i}",url=link)])
+    buttons.append([InlineKeyboardButton(text="🔄 Check Subscription",callback_data="check_force_join")])
+
+    count_text = f"{len(rows)}টি required channel" if len(rows) > 1 else "১টি required channel"
     await message.answer(
-        "<b>🔒 Channel Join Required</b>\n\n"
-        "<b>বট ব্যবহার করতে হলে নিচের প্রয়োজনীয় চ্যানেলগুলোতে জয়েন করুন। তারপর Check Joined চাপুন।</b>",
+        "<b>🔒 CHANNEL JOIN REQUIRED</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "<b>স্বাগতম! আমাদের সাথে যুক্ত হতে নিচের required channel-এ Join করুন।</b>\n\n"
+        f"<b>📢 Required: {count_text}</b>\n"
+        "<b>সবগুলো Channel Join করার পর নিচের Check Subscription চাপুন।</b>",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
 
 # =========================
@@ -955,6 +979,23 @@ async def start(message: Message, state: FSMContext):
             except Exception:
                 pass
 
+    # Normal users always enter through the new Welcome → Join/Open flow.
+    # Admin/Owner keep the existing full Telegram keyboard unchanged.
+    if not admin_ok(uid):
+        await message.answer(
+            "<b>🎉 স্বাগতম NIKAN EARN-এ!</b>\n\n"
+            "<b>আমাদের সাথে যুক্ত হওয়ার জন্য ধন্যবাদ।</b>",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        if not await check_force_join(uid):
+            await force_join_prompt(message)
+            return
+        await message.answer(
+            "<b>✅ আপনি সফলভাবে প্রস্তুত।</b>\n\n<b>নিচের 🚀 Open বাটনে চাপ দিয়ে NIKAN EARN খুলুন।</b>",
+            reply_markup=open_keyboard()
+        )
+        return
+
     if not await check_force_join(uid):
         await force_join_prompt(message)
         return
@@ -969,10 +1010,16 @@ async def verify_force_join(call: CallbackQuery):
     uid = call.from_user.id
     if await check_force_join(uid):
         await call.message.delete()
-        await call.message.answer(
-            "<b>✅ ভেরিফিকেশন সফল হয়েছে!</b>\n\n<b>নিচের মেনু থেকে আপনার পছন্দমতো অপশন বেছে নিন।</b>",
-            reply_markup=main_keyboard(uid)
-        )
+        if admin_ok(uid):
+            await call.message.answer(
+                "<b>✅ ভেরিফিকেশন সফল হয়েছে!</b>\n\n<b>নিচের মেনু থেকে আপনার পছন্দমতো অপশন বেছে নিন।</b>",
+                reply_markup=main_keyboard(uid)
+            )
+        else:
+            await call.message.answer(
+                "<b>✅ ভেরিফিকেশন সফল হয়েছে!</b>\n\n<b>এখন নিচের 🚀 Open বাটনে চাপ দিয়ে বট খুলুন।</b>",
+                reply_markup=open_keyboard()
+            )
     else:
         await call.answer("❌ আপনি এখনো চ্যানেলে জয়েন করেননি! দয়া করে জয়েন করুন।", show_alert=True)
         return
@@ -985,6 +1032,9 @@ async def menu(message: Message, state: FSMContext):
     if not await check_force_join(uid):
         await force_join_prompt(message)
         return
+    if not admin_ok(uid):
+        await message.answer("<b>🚀 NIKAN EARN</b>\n\n<b>নিচের 🚀 Open বাটনে চাপুন।</b>", reply_markup=open_keyboard())
+        return
     await message.answer("<b>🏠 Main Menu</b>\n<b>নিচের মেনু থেকে একটি অপশন নির্বাচন করুন।</b>", reply_markup=main_keyboard(uid))
 
 @dp.message(Command("help"))
@@ -995,7 +1045,7 @@ async def help_command(message: Message):
 async def cancel(message: Message, state: FSMContext):
     await state.clear()
     uid = message.from_user.id
-    await message.answer("<b>❌ বর্তমান প্রক্রিয়াটি বাতিল করা হয়েছে।</b>", reply_markup=main_keyboard(uid))
+    await message.answer("<b>❌ বর্তমান প্রক্রিয়াটি বাতিল করা হয়েছে।</b>", reply_markup=main_keyboard(uid) if admin_ok(uid) else open_keyboard())
 
 # =========================
 # DEPOSIT
@@ -3379,6 +3429,7 @@ async def x_delete_all_users_confirm(call: CallbackQuery):
 async def sync_bot_commands():
     con=db()
     rows=con.execute("SELECT command,title,enabled FROM bot_commands WHERE enabled=1 ORDER BY command").fetchall()
+    admins=con.execute("SELECT user_id FROM admins").fetchall()
     con.close()
     commands=[
         BotCommand(command="start",description="🚀 Start Bot"),
@@ -3386,8 +3437,21 @@ async def sync_bot_commands():
         BotCommand(command="help",description="🆘 Help Center")
     ]
     commands += [BotCommand(command=c,description=(t or c)[:256]) for c,t,e in rows if c not in ("start","menu","help")]
-    try: await bot.set_my_commands(commands)
-    except Exception: pass
+    try:
+        # Hide the command list from normal users. Commands remain registered for
+        # admin/owner chats only, so the existing admin command experience is kept.
+        await bot.set_my_commands([], scope=None)
+    except Exception:
+        pass
+    for (uid,) in admins:
+        try:
+            await bot.set_my_commands(commands, scope=BotCommandScopeChat(chat_id=int(uid)))
+        except Exception:
+            pass
+    try:
+        await bot.set_my_commands(commands, scope=BotCommandScopeChat(chat_id=int(ADMIN_ID)))
+    except Exception:
+        pass
 
 @dp.message(AdvancedAdminState.command_edit)
 async def x_command_edit(message: Message,state:FSMContext):
@@ -3417,6 +3481,19 @@ async def x_command_edit(message: Message,state:FSMContext):
         return await message.answer("<b>❌ Command format ভুল।</b>",reply_markup=main_keyboard(message.from_user.id))
     con.close(); await state.clear(); await sync_bot_commands()
     await message.answer("<b>✅ Command updated.</b>",reply_markup=main_keyboard(message.from_user.id))
+
+@dp.message(F.text == "🚀 Open")
+async def open_mini_app(message: Message):
+    uid = message.from_user.id
+    if admin_ok(uid):
+        return
+    if not await check_force_join(uid):
+        await force_join_prompt(message)
+        return
+    if not WEBAPP_URL.startswith("https://"):
+        await message.answer("<b>⚠️ Mini App URL এখনো সেট করা হয়নি।</b>\n<b>Admin-এর কাছে WEBAPP_URL সেট করতে বলুন।</b>")
+        return
+    await message.answer("<b>🚀 NIKAN EARN</b>\n<b>নিচের Open বাটনটি ব্যবহার করুন।</b>", reply_markup=open_keyboard())
 
 @dp.message()
 async def dynamic_command_handler(message: Message):
@@ -3453,13 +3530,8 @@ async def main():
     asyncio.create_task(periodic_database_backup())
     await bot.delete_webhook(drop_pending_updates=True)
     
-    commands = [
-        BotCommand(command="start", description="🚀 Start Bot — বট শুরু করুন"),
-        BotCommand(command="menu", description="🏠 Main Menu — প্রধান মেনু"),
-        BotCommand(command="help", description="🆘 Help Center — সাহায্য কেন্দ্র")
-    ]
-    await bot.set_my_commands(commands)
-    
+    await sync_bot_commands()
+
     print("Bot is starting...")
     await dp.start_polling(bot)
 

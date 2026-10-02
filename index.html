@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>NIKAN EARN</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
+  <style>
+    :root{--bg:#07111f;--card:#0e1b2d;--card2:#12233a;--text:#f5f7fb;--muted:#8fa1b8;--accent:#52a8ff;--line:#1e344e;--ok:#38d39f;--danger:#ff6675}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 20% 0,#15375b 0,#07111f 38%,#050b14 100%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+    .app{max-width:760px;margin:auto;padding:14px 14px 92px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 16px}
+    .brand{font-weight:900;font-size:23px;letter-spacing:.4px}.sub{font-size:12px;color:var(--muted)} .avatar{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#52a8ff,#765cff);display:grid;place-items:center;font-weight:900}
+    .hero{position:relative;overflow:hidden;border:1px solid var(--line);background:linear-gradient(145deg,#102b47,#0b1728 70%);border-radius:24px;padding:22px;margin-bottom:14px;box-shadow:0 18px 45px #0005}
+    .hero:after{content:"";position:absolute;width:160px;height:160px;border-radius:50%;right:-60px;top:-70px;background:#52a8ff25;animation:float 5s ease-in-out infinite}
+    @keyframes float{50%{transform:translate(-12px,16px)}} .balance{font-size:35px;font-weight:900;margin-top:7px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.chip{padding:7px 10px;border:1px solid var(--line);background:#ffffff08;border-radius:999px;font-size:12px;color:#cbd7e5}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.card{border:1px solid var(--line);background:#0c192aee;border-radius:19px;padding:16px;min-width:0}
+    button,.btn{border:0;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px 13px;font-weight:800;cursor:pointer;min-height:44px}
+    button.primary{background:linear-gradient(135deg,#52a8ff,#6b6cff);border:0}.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1}.section{margin-top:16px}.section h2{font-size:16px;margin:0 0 10px}.muted{color:var(--muted);font-size:13px}.value{font-size:21px;font-weight:850}.list{display:grid;gap:9px}.item{padding:13px;border-radius:15px;background:#ffffff06;border:1px solid var(--line)}.item b{display:block;margin-bottom:4px}
+    input,select{width:100%;padding:13px;border-radius:13px;border:1px solid var(--line);background:#081321;color:var(--text);font-size:16px;outline:none}.field{display:grid;gap:7px;margin:10px 0}.field label{font-size:12px;color:var(--muted)}
+    .nav{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:min(730px,calc(100% - 20px));display:grid;grid-template-columns:repeat(5,1fr);gap:5px;padding:6px;background:#081321ee;backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:20px;z-index:5}
+    .nav button{padding:9px 3px;background:transparent;border:0;font-size:11px;min-height:48px}.nav button.active{background:#52a8ff18;color:#70baff;border-radius:14px}
+    .toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:10;background:#101e31;color:#fff;border:1px solid var(--line);padding:11px 15px;border-radius:14px;display:none;max-width:90%;text-align:center}.spinner{width:20px;height:20px;border:2px solid #ffffff22;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;display:inline-block}@keyframes spin{to{transform:rotate(360deg)}} .empty{padding:20px;text-align:center;color:var(--muted)}
+    @media(max-width:430px){.grid{grid-template-columns:1fr 1fr}.balance{font-size:30px}.hero{padding:18px}.app{padding-left:11px;padding-right:11px}}
+  </style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+<main class="app">
+  <div class="top"><div><div class="brand">NIKAN EARN</div><div class="sub">Telegram Mini App</div></div><div id="avatar" class="avatar">N</div></div>
+  <div id="view"></div>
+</main>
+<nav class="nav">
+  <button data-nav="home" class="active">🏠<br>Home</button>
+  <button data-nav="plans">💎<br>Plans</button>
+  <button data-nav="earn">📊<br>Earn</button>
+  <button data-nav="history">🧾<br>History</button>
+  <button data-nav="help">🆘<br>Help</button>
+</nav>
+<script>
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();try{tg.setHeaderColor('#07111f');tg.setBackgroundColor('#07111f')}catch(e){}}
+const state={data:null,view:'home'};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const init=()=>tg?.initData||'';
+async function api(path,opt={}){
+  const headers=Object.assign({'X-Telegram-Init-Data':init(),'Content-Type':'application/json'},opt.headers||{});
+  const r=await fetch(path,{...opt,headers});
+  const j=await r.json().catch(()=>({detail:'Server error'}));
+  if(!r.ok)throw new Error(j.detail||'Request failed');
+  return j;
+}
+function toast(t){const x=$('#toast');x.textContent=t;x.style.display='block';clearTimeout(window.__t);window.__t=setTimeout(()=>x.style.display='none',2600)}
+function money(x){return Number(x||0).toLocaleString('en-US',{maximumFractionDigits:2})+'৳'}
+function setNav(){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.nav===state.view))}
+function card(title,body,actions=''){return `<div class="card"><div class="muted">${title}</div><div style="margin-top:5px">${body}</div>${actions?`<div class="row" style="margin-top:12px">${actions}</div>`:''}</div>`}
+async function load(){
+  try{
+    state.data=await api('/api/bootstrap');
+    const u=state.data.user; $('#avatar').textContent=(u.name||'N').slice(0,1).toUpperCase();
+    render();
+  }catch(e){$('#view').innerHTML=`<div class="card"><h2>🔒 Mini App Authorization</h2><p class="muted">${esc(e.message)}</p></div>`}
+}
+function render(){
+  setNav();
+  if(state.view==='home') home();
+  else if(state.view==='plans') plans();
+  else if(state.view==='earn') earn();
+  else if(state.view==='history') history();
+  else help();
+}
+function home(){
+ const u=state.data.user,s=state.data.settings;
+ $('#view').innerHTML=`
+ <section class="hero"><div class="muted">💰 Main Balance</div><div class="balance">${money(u.main_balance)}</div>
+ <div class="chips"><span class="chip">📥 Deposit ${money(u.deposit_balance)}</span><span class="chip">🎁 Bonus ${money(u.bonus_balance)}</span><span class="chip">👥 Referral ${money(u.referral_balance)}</span></div></section>
+ <div class="grid">
+ ${card('👤 My Account',`<div class="value">${esc(u.name||'User')}</div><div class="muted">@${esc(u.username||'—')} • ${u.id}</div>`)}
+ ${card('📈 Total Earnings',`<div class="value">${money(u.total_earnings)}</div><div class="muted">${u.referral_count} referrals</div>`)}
+ </div>
+ <section class="section"><h2>⚡ Quick Actions</h2><div class="grid">
+ <button class="primary" onclick="deposit()">🔐 Fund Deposit</button><button onclick="withdraw()">💸 Withdraw</button>
+ <button onclick="plans()">💎 Available Plans</button><button onclick="bonus()">🎁 Bonus Center</button>
+ <button onclick="referral()">👥 Referral</button><button onclick="account()">👤 Account</button>
+ </div></section>`;
+}
+function account(){state.view='home';render();toast('Account information is shown on Home.')}
+async function deposit(){
+ const m=state.data.deposit_methods;if(!m.length)return toast('কোনো Deposit Method চালু নেই।');
+ $('#view').innerHTML=`<div class="card"><h2>🔐 Fund Deposit</h2><div class="muted">একটি Payment Method নির্বাচন করুন।</div><div class="list" style="margin-top:12px">${m.map(x=>`<button onclick="depositForm('${esc(x.name)}')">${x.logo} ${esc(x.name)}</button>`).join('')}</div></div>`;
+}
+function depositForm(method){
+ const x=state.data.deposit_methods.find(a=>a.name===method), bin=method.toLowerCase()==='binance';
+ $('#view').innerHTML=`<div class="card"><h2>${x.logo} ${esc(method)} Deposit</h2>
+ <div class="field"><label>${bin?'USDT Amount':'BDT Amount'}</label><input id="depAmt" inputmode="decimal" placeholder="${bin?'1–50':'Minimum '+state.data.settings.min_dep}"></div>
+ <button class="primary" onclick="createDeposit('${esc(method)}')">Continue</button></div>`;
+}
+async function createDeposit(method){
+ try{
+  const amount=$('#depAmt').value; const j=await api('/api/deposit/create',{method:'POST',body:JSON.stringify({method,amount})});
+  let extra='';
+  if(j.payment_url)extra+=`<a class="btn" href="${esc(j.payment_url)}" target="_blank" style="display:block;text-align:center">🌐 Open Payment Gateway</a>`;
+  if(j.manual_number)extra+=`<div class="item">📲 Manual Number<br><b>${esc(j.manual_number)}</b></div>`;
+  if(j.binance_address)extra+=`<div class="item">🟡 BEP20 Address<br><b style="word-break:break-all">${esc(j.binance_address)}</b><div class="muted">1 USDT = ${j.usdt_rate}৳</div></div>`;
+  $('#view').innerHTML=`<div class="card"><h2>💳 ${esc(method)} Payment</h2><div class="item">💰 Amount<br><b>${money(j.amount_bdt)}</b></div>${extra}
+   <div class="field"><label>Transaction ID / Hash</label><input id="txid" placeholder="Transaction ID"></div>
+   <div class="row"><button class="primary" onclick="submitDeposit('${j.session_id}')">🧾 I Paid</button><button onclick="cancelDeposit('${j.session_id}')">Cancel</button></div></div>`;
+ }catch(e){toast(e.message)}
+}
+async function submitDeposit(sid){try{const j=await api('/api/deposit/submit',{method:'POST',body:JSON.stringify({session_id:sid,txid:$('#txid').value})});toast(j.message);home()}catch(e){toast(e.message)}}
+async function cancelDeposit(sid){try{await api('/api/deposit/cancel',{method:'POST',body:JSON.stringify({session_id:sid})});toast('Deposit Session cancelled.');home()}catch(e){toast(e.message)}}
+async function withdraw(){
+ const m=state.data.withdraw_methods;if(!m.length)return toast('কোনো Withdraw Method চালু নেই।');
+ $('#view').innerHTML=`<div class="card"><h2>💸 Withdraw</h2><div class="list">${m.map(x=>`<button onclick="withdrawForm('${esc(x.name)}')">${x.logo} ${esc(x.name)}</button>`).join('')}</div></div>`;
+}
+function withdrawForm(method){
+ $('#view').innerHTML=`<div class="card"><h2>💸 ${esc(method)}</h2><div class="field"><label>Mobile / Account</label><input id="wdAcc" inputmode="numeric" placeholder="017XXXXXXXX"></div><div class="field"><label>Amount</label><input id="wdAmt" inputmode="decimal" placeholder="${state.data.settings.min_wth}–${state.data.settings.max_wth}"></div><button class="primary" onclick="submitWithdraw('${esc(method)}')">Submit Withdraw</button></div>`;
+}
+async function submitWithdraw(method){try{const j=await api('/api/withdraw',{method:'POST',body:JSON.stringify({method,account:$('#wdAcc').value,amount:$('#wdAmt').value})});toast(j.message);state.data.user=j.user;home()}catch(e){toast(e.message)}}
+async function plans(){
+ const j=await api('/api/plans');$('#view').innerHTML=`<div class="card"><h2>💎 Available Plans</h2><div class="list" style="margin-top:10px">${j.plans.map(p=>`<div class="item"><b>${p.emoji||'💎'} ${esc(p.name)}</b><div class="muted">৳${Number(p.amount).toLocaleString()} • ${p.days} days • Daily ${money(p.amount*p.daily_rate)}</div><button style="margin-top:9px;width:100%" onclick="buyPlan('${esc(p.name)}')">💸 Plan Buy</button></div>`).join('')}</div></div>`;
+}
+async function buyPlan(plan){if(!confirm(`Activate ${plan}?`))return;try{const j=await api('/api/plan/buy',{method:'POST',body:JSON.stringify({plan})});state.data.user=j.user;toast(j.message);home()}catch(e){toast(e.message)}}
+async function earn(){
+ try{const j=await api('/api/earnings');$('#view').innerHTML=`<div class="card"><h2>📊 Daily Earnings</h2><div class="muted">Claim window: ${j.claim_window}</div><div class="list" style="margin-top:10px">${j.plans.length?j.plans.map(p=>`<div class="item"><b>💎 ${esc(p.plan)}</b><div>${money(p.amount)} • Daily ${money(p.daily)}</div><div class="muted">Expires: ${esc(p.expires_at)}</div></div>`).join(''):'<div class="empty">কোনো active plan নেই।</div>'}</div><button class="primary" style="width:100%;margin-top:12px" onclick="claim()">🧮 Today Earnings Claim</button></div>`}catch(e){toast(e.message)}
+}
+async function claim(){try{const j=await api('/api/earnings/claim',{method:'POST'});state.data.user=j.user;toast(`+${money(j.amount)} added`);earn()}catch(e){toast(e.message)}}
+async function bonus(){
+ const j=await api('/api/bonus');$('#view').innerHTML=`<div class="card"><h2>🎁 Bonus Center</h2><div class="value">${money(j.balance)}</div><div class="muted">Available Bonus</div><button class="primary" style="width:100%;margin-top:12px" onclick="claimBonus()">🎁 Daily Free ${esc(j.amount)}৳ Claim</button><section class="section"><h2>📜 Bonus History</h2><div class="list">${j.history.length?j.history.map(x=>`<div class="item">🎁 +${money(x.amount)} • ${esc(x.type)}<div class="muted">${esc(x.created_at)}</div></div>`).join(''):'<div class="empty">কোনো history নেই।</div>'}</div></section></div>`;
+}
+async function claimBonus(){try{const j=await api('/api/bonus/claim',{method:'POST'});state.data.user=j.user;toast(`🎁 +${money(j.amount)}`);bonus()}catch(e){toast(e.message)}}
+async function referral(){
+ const j=await api('/api/referral');
+ $('#view').innerHTML=`<div class="card"><h2>👥 Referral Center</h2>
+ <div class="item"><b>🔗 Referral Link</b><div style="word-break:break-all">${esc(j.link||'')}</div></div>
+ <div class="grid" style="margin-top:10px">${card('👥 Referrals',`<div class="value">${j.count}</div>`)}${card('💰 Earnings',`<div class="value">${money(j.balance)}</div>`)}</div>
+ <div class="muted" style="margin-top:12px">${j.enabled?`Referral Bonus: ${esc(j.bonus)}৳`:'Referral Bonus বর্তমানে বন্ধ আছে।'}</div></div>`;
+}
+async function history(){
+ const j=await api('/api/history');const group=(title,arr,fmt)=>`<div class="card"><h3>${title}</h3><div class="list">${arr.length?arr.map(fmt).join(''):'<div class="empty">কোনো রেকর্ড নেই</div>'}</div></div>`;
+ $('#view').innerHTML=`<h2>🧾 Transaction History</h2>${group('📥 Deposits',j.deposits,x=>`<div class="item"><b>${esc(x.method)} • ${money(x.amount)}</b><div class="muted">${esc(x.status)} • ${esc(x.order||'')}</div></div>`)}${group('📤 Withdrawals',j.withdrawals,x=>`<div class="item"><b>${esc(x.method)} • ${money(x.amount)}</b><div class="muted">${esc(x.status)}</div></div>`)}${group('📊 Earnings',j.earnings,x=>`<div class="item"><b>+${money(x.amount)}</b><div class="muted">${esc(x.claim_date)}</div></div>`)}`;
+}
+async function help(){
+ const j=await api('/api/help');
+ const cmds=state.data.commands||[];
+ const cmdHtml=cmds.length?cmds.map(c=>`<button onclick="customCommand('${esc(c.command)}')">/${esc(c.command)} — ${esc(c.title||c.command)}</button>`).join(''):'<div class="empty">কোনো custom command নেই।</div>';
+ $('#view').innerHTML=`<div class="card"><h2>${j.title}</h2><div class="list">${j.categories.map(x=>`<div class="item">🆘 ${esc(x)}</div>`).join('')}</div><div class="row" style="margin-top:12px"><a class="btn" href="https://t.me/Nikan_Support01" target="_blank">📞 Support</a><a class="btn" href="https://t.me/NIKAN_EARN" target="_blank">📢 Channel</a></div><section class="section"><h2>📋 Rules</h2><div class="item">${esc(j.rules)}</div></section><section class="section"><h2>⌨️ Commands</h2><div class="list">${cmdHtml}</div></section></div>`;
+}
+async function customCommand(command){
+ try{const j=await api('/api/command/'+encodeURIComponent(command));$('#view').innerHTML=`<div class="card"><h2>/${esc(j.command)}</h2><div class="item">${esc(j.message||'Command configured.')}</div><button style="margin-top:12px;width:100%" onclick="help()">⬅️ Back</button></div>`}catch(e){toast(e.message)}
+}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{state.view=b.dataset.nav;render()}));
+load();
+</script>
+</body>
+</html>

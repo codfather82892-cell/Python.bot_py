@@ -18,7 +18,12 @@ import bot as core
 
 app = FastAPI(title="NIKAN EARN Mini App", docs_url=None, redoc_url=None)
 BASE = Path(__file__).resolve().parent
-app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
+STATIC_DIR = BASE / "static"
+ROOT_INDEX = BASE / "index.html"
+
+# Support both layouts: static/index.html (recommended) and root index.html.
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def validate_init_data(init_data: str):
@@ -163,7 +168,10 @@ class PlanBuy(BaseModel):
 
 @app.get("/")
 async def index():
-    return FileResponse(BASE / "static" / "index.html")
+    index_file = STATIC_DIR / "index.html" if (STATIC_DIR / "index.html").is_file() else ROOT_INDEX
+    if not index_file.is_file():
+        raise HTTPException(500, "Mini App index.html is missing.")
+    return FileResponse(index_file)
 
 
 @app.get("/health")

@@ -10,7 +10,7 @@ import telebot
 from telebot import types
 
 # ⚠️ আপনার আসল Bot Token দিয়ে এটি পরিবর্তন করুন
-API_TOKEN = "8692563741:AAHUpABl5IpMEiU45ASu-kIqc9q7BcY0StA"
+API_TOKEN = "8692563741:AAGiqrQ1jEdxFt4XfR_g955fERpQOWTYqNU"
 BOT_USERNAME = "wahoearn2026bot"
 
 # মেইন এডমিন লিস্ট (সুপার এডমিন)
